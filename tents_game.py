@@ -5,6 +5,7 @@ import os
 from pdf2image import convert_from_path
 from PIL import Image
 import matplotlib.pyplot as plt
+import time
 
 # Constants
 TENT = 2
@@ -29,13 +30,17 @@ class TentsGame(object):
     #     self.tips_x = tips_x
     #     self.tips_y = tips_y
 
-    def __init__(self, size=6, seed=None):
+    def __init__(self, size=6, seed=None, show_before_remove_tents = False):
+
+        # tic0 = time.time()
         if seed != None:
             random.seed(seed)
+        # toc0 = time.time()
 
         self.size = size
         self.number_of_trees = int(math.floor(size * size / 5))
         self.field = np.ones((size, size)) * EMPTY
+        # tic1 = time.time()
         done = False
         while not done:
             try:
@@ -43,7 +48,11 @@ class TentsGame(object):
                 done = True
             except:
                 done = False
+        # toc1 = time.time()
+        # tic2 = time.time()
         (self.tips_x, self.tips_y) = self._get_tents_positions()
+        # toc2 = time.time()
+        # tic3 = time.time()
         done = False
         while not done:
             try:
@@ -51,8 +60,17 @@ class TentsGame(object):
                 done = True
             except:
                 done = False
-        self._construct_remove_tents()
-        pass
+        # toc3 = time.time()
+        # tic4 = time.time()
+        if not show_before_remove_tents:
+            self._construct_remove_tents()
+        # toc4 = time.time()
+
+        # print(toc0-tic0)
+        # print(toc1-tic1)
+        # print(toc2-tic2)
+        # print(toc3-tic3)
+        # print(toc4-tic4)
 
     def __repr__(self):
         field_repr = '   '
@@ -145,8 +163,10 @@ class TentsGame(object):
                     fileTEX.write(f"\t\t\t\\node[draw=black,thick,fill=green!50, anchor=north west, minimum size = 1cm] (a{i}{j}) at ({j},{self.size-i})"+' {\\NotoEmoji\\symbol{"1F333}};\n')
                 elif self.field[i, j] == TENT:
                     fileTEX.write(f'\t\t\t\\node[draw=black,thick,fill=green!50, anchor=north west, minimum size = 1cm] (a{i}{j}) at ({j},{self.size-i})'+' {\\NotoEmoji\\symbol{"26FA}};\n')
-        # for i, x in enumerate(self.tips_x):
-        #     fileTEX.write(f'\t\t\t\\node[draw=black,thick,fill=brown!50, anchor=north west, minimum size = 1cm] (a{i}) at ({i},{self.size-i})'+' {'+f'{x}'+'};\n')
+        for i, x in enumerate(self.tips_x):
+            fileTEX.write(f'\t\t\t\\node (x{i}) at ({i+0.5},{self.size+0.5})'+' {\\textbf{'+f'{x}'+'}};\n')
+        for j, y in enumerate(self.tips_y):
+            fileTEX.write(f'\t\t\t\\node (y{j}) at ({-0.5},{self.size-j-0.5})'+' {\\textbf{'+f'{y}'+'}};\n')
         
         fileTEX.write('\t\t\\end{tikzpicture}\n')
         fileTEX.write('\t}\n')
@@ -165,4 +185,4 @@ class TentsGame(object):
         plt.grid(False)
         plt.axis('off')
         plt.show()
-        os.system('rm pic.*')
+        os.system('del pic.*')

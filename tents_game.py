@@ -28,8 +28,6 @@ class TentsGame(object):
     #     self.tips_y = tips_y
 
     def __init__(self, size=6, seed=None, show_before_remove_tents = False):
-        self.pq = Heap([]) # heap to use in solving
-
         # tic0 = time.time()
         if seed != None:
             random.seed(seed)
@@ -142,6 +140,12 @@ class TentsGame(object):
         for tent in self.tents:
             self.field[tent[0], tent[1]] = EMPTY
         self.tents = []
+
+    def is_valid_coordinate(self, x, y):
+        if x >= 0 and y >= 0 and x < self.size and y < self.size:
+            return True
+        else:
+            return False
 
     def show(self):
         fileTEX = open('pic.tex', 'w', encoding='UTF-8')

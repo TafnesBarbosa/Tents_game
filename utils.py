@@ -26,8 +26,11 @@ class Heap(list):
             raise ValueError()
         else:
             maxi = self[0]
-            self[0] = self.pop()
-            self.sift(0)
+            if self.__len__() > 1:
+                self[0] = self.pop()
+                self.sift(0)
+            else:
+                self.pop()
             return maxi
         
     def modify(self, k, x):

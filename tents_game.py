@@ -6,11 +6,8 @@ from pdf2image import convert_from_path
 from PIL import Image
 import matplotlib.pyplot as plt
 import time
-
-# Constants
-TENT = 2
-TREE = 1
-EMPTY = 0
+from constants import *
+from utils import *
 
 class TentsGame(object):
     """
@@ -31,6 +28,7 @@ class TentsGame(object):
     #     self.tips_y = tips_y
 
     def __init__(self, size=6, seed=None, show_before_remove_tents = False):
+        self.pq = Heap([]) # heap to use in solving
 
         # tic0 = time.time()
         if seed != None:
@@ -51,6 +49,7 @@ class TentsGame(object):
         # toc1 = time.time()
         # tic2 = time.time()
         (self.tips_x, self.tips_y) = self._get_tents_positions()
+        self.tips_x_copy, self.tips_y_copy = self.tips_x.copy(), self.tips_y.copy()
         # toc2 = time.time()
         # tic3 = time.time()
         done = False
@@ -90,6 +89,8 @@ class TentsGame(object):
                     field_repr += ' ' + '\U000025A1'
                 elif self.field[i, j] == TENT:
                     field_repr += ' ' + '\U000025B2'
+                elif self.field[i, j] == POSSIBLE_TENT:
+                    field_repr += ' ' + '\U000025A0'
             field_repr += '\n'
         return field_repr
     
@@ -125,12 +126,14 @@ class TentsGame(object):
 
     def _construct_put_trees(self):
         possible_positions_to = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        self.trees = []
         for tent in self.tents:
             position_to = random.sample(possible_positions_to, 4)
             for i in range(4):
                 if tent[0]+position_to[i][0] >= 0 and tent[0]+position_to[i][0] < self.size and tent[1]+position_to[i][1] >= 0 and tent[1]+position_to[i][1] < self.size:
                     if self.field[tent[0]+position_to[i][0], tent[1]+position_to[i][1]] != TREE:
                         self.field[tent[0]+position_to[i][0], tent[1]+position_to[i][1]] = TREE
+                        self.trees.append((tent[0]+position_to[i][0], tent[1]+position_to[i][1]))
                         break
                     else:
                         continue
@@ -163,6 +166,8 @@ class TentsGame(object):
                     fileTEX.write(f"\t\t\t\\node[draw=black,thick,fill=green!50, anchor=north west, minimum size = 1cm] (a{i}{j}) at ({j},{self.size-i})"+' {\\NotoEmoji\\symbol{"1F333}};\n')
                 elif self.field[i, j] == TENT:
                     fileTEX.write(f'\t\t\t\\node[draw=black,thick,fill=green!50, anchor=north west, minimum size = 1cm] (a{i}{j}) at ({j},{self.size-i})'+' {\\NotoEmoji\\symbol{"26FA}};\n')
+                elif self.field[i, j] == POSSIBLE_TENT:
+                    fileTEX.write(f'\t\t\t\\node[draw=black,thick,fill=black!50, anchor=north west, minimum size = 1cm] (a{i}{j}) at ({j},{self.size-i})'+' {};\n')
         for i, x in enumerate(self.tips_x):
             fileTEX.write(f'\t\t\t\\node (x{i}) at ({i+0.5},{self.size+0.5})'+' {\\textbf{'+f'{x}'+'}};\n')
         for j, y in enumerate(self.tips_y):

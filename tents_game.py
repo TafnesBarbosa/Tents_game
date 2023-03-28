@@ -27,47 +27,45 @@ class TentsGame(object):
     #     self.tips_x = tips_x
     #     self.tips_y = tips_y
 
-    def __init__(self, size=6, seed=None, show_before_remove_tents = False):
-        # tic0 = time.time()
-        if seed != None:
-            random.seed(seed)
-        # toc0 = time.time()
+    def __init__(self, size = 6, seed = None, show_before_remove_tents = False, generate = True, trees_x=[], trees_y=[], tips_x=[], tips_y=[]):
+        if generate:
+            if seed != None:
+                random.seed(seed)
 
-        self.size = size
-        self.number_of_trees = int(math.floor(size * size / 5))
-        self.field = np.ones((size, size)) * EMPTY
-        # tic1 = time.time()
-        done = False
-        while not done:
-            try:
-                self._construct_put_tents()
-                done = True
-            except:
-                done = False
-        # toc1 = time.time()
-        # tic2 = time.time()
-        (self.tips_x, self.tips_y) = self._get_tents_positions()
-        self.tips_x_copy, self.tips_y_copy = self.tips_x.copy(), self.tips_y.copy()
-        # toc2 = time.time()
-        # tic3 = time.time()
-        done = False
-        while not done:
-            try:
-                self._construct_put_trees()
-                done = True
-            except:
-                done = False
-        # toc3 = time.time()
-        # tic4 = time.time()
-        if not show_before_remove_tents:
-            self._construct_remove_tents()
-        # toc4 = time.time()
+            self.size = size
+            self.number_of_trees = int(math.floor(size * size / 5))
+            self.field = np.ones((size, size)) * EMPTY
+            done = False
+            while not done:
+                try:
+                    self._construct_put_tents()
+                    done = True
+                except:
+                    done = False
+            (self.tips_x, self.tips_y) = self._get_tents_positions()
+            self.tips_x_copy, self.tips_y_copy = self.tips_x.copy(), self.tips_y.copy()
+            done = False
+            while not done:
+                try:
+                    self._construct_put_trees()
+                    done = True
+                except:
+                    done = False
+            if not show_before_remove_tents:
+                self._construct_remove_tents()
+        else:
+            self.size = size
+            self.field = np.ones((size, size), dtype = int) * EMPTY
+            for x, y in zip(trees_x, trees_y):
+                self.field[y, x] = TREE
 
-        # print(toc0-tic0)
-        # print(toc1-tic1)
-        # print(toc2-tic2)
-        # print(toc3-tic3)
-        # print(toc4-tic4)
+            self.tips_x = tips_x
+            self.tips_x_copy = tips_x.copy()
+            self.tips_y = tips_y
+            self.tips_y_copy = tips_y.copy()
+            self.trees = []
+            for i, j in zip(trees_y, trees_x):
+                self.trees.append((i, j))
 
     def __repr__(self):
         field_repr = '   '

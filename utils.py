@@ -53,3 +53,4 @@ class Heap(list):
         for i in range(self.__len__()):
             if self[i][1] == x:
                 return i
+        return None

@@ -2,9 +2,9 @@
 Constants used in the code
 """
 
-POSSIBLE_TENT = 3
+POSSIBLE_TENT = 1
 TENT = 2
-TREE = 1
+TREE = 3
 EMPTY = 0
 TIPS_ZEROED = -1
 

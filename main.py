@@ -3,7 +3,7 @@ from mypdf2images import *
 from tents_solver import *
 import matplotlib.pyplot as plt
 
-tents_game = TentsGame(8, seed=26, show_before_remove_tents=False)
+tents_game = TentsGame(16, seed=26, show_before_remove_tents=False)
 # tents_game = TentsGame(6, generate=False, trees_x=[3, 3, 5, 0, 2, 5, 1], trees_y=[0, 1, 1, 2, 3, 4, 5], tips_x=[2, 1, 1, 1, 1, 1], tips_y=[1, 1, 2, 1, 1, 1])
 # tents_game = TentsGame(8, generate=False, trees_x=[0, 3, 4, 7, 0, 3, 6, 0, 3, 4, 3, 7], trees_y=[1, 1, 1, 2, 3, 3, 4, 5, 5, 5, 7, 7], tips_x=[2, 1, 2, 1, 2, 1, 1, 2], tips_y=[2, 2, 0, 3, 0, 1, 3, 1])
 # tents_game = TentsGame(15, generate=False, trees_x=[0, 7, 10, 12, 6, 2, 3, 8, 10, 2, 7, 12, 1, 12, 0, 8, 10, 6, 7, 8, 11, 14, 2, 14, 12, 0, 7, 9, 4, 9, 0, 1, 3, 7, 11, 12, 14, 1, 7, 8, 13, 1, 5, 10, 11], trees_y=[0, 0, 0, 0, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 8, 9, 9, 9, 10, 10, 11, 11, 11, 11, 11, 11, 12, 13, 13, 13, 13, 14, 14, 14, 14], tips_x=[4, 3, 3, 2, 3, 2, 3, 2, 4, 2, 4, 3, 4, 2, 4], tips_y=[4, 2, 3, 3, 3, 2, 4, 2, 1, 5, 1, 5, 3, 3, 4])

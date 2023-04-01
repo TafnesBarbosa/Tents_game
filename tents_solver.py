@@ -54,14 +54,14 @@ class TentsGameSolver(object):
 
     def update_maximum_heap(self, i, j):
         index = self.possible_tents.find((i, j))
-        self.possible_tents.modify(index, (inf, self.possible_tents[index][1]))
+        self.possible_tents.modify(index, (inf, self.possible_tents.heap[index][1]))
         self.possible_tents.extract_max()
         for ii, jj in EIGHT_CONNECTED:
             coord_i = i + ii
             coord_j = j + jj
             if self.is_valid_coordinate(coord_i, coord_j) and self.field[coord_i, coord_j] == POSSIBLE_TENT:
                 index = self.possible_tents.find((coord_i, coord_j))
-                self.possible_tents.modify(index, (self.possible_tents[index][0]-1, self.possible_tents[index][1]))
+                self.possible_tents.modify(index, (self.possible_tents.heap[index][0]-1, self.possible_tents.heap[index][1]))
 
     def put_tent(self, tree, know_what_tree=True, tent=(None, None)):
         if know_what_tree:
@@ -99,7 +99,7 @@ class TentsGameSolver(object):
             self.field.copy(),
             self.tips_x_copy.copy(),
             self.tips_y_copy.copy(),
-            HeapMax(self.possible_tents.copy()),
+            HeapMax(self.possible_tents.heap.copy()),
             self.verified_tips_equal_0,
             self.verified_possible_tents_equal_1,
             self.verified_tips_equal_possible_tents,
@@ -140,7 +140,7 @@ class TentsGameSolver(object):
                             break
                 if self.is_wrong:
                     break
-            if len(self.possible_tents) == 0:
+            if len(self.possible_tents.heap) == 0:
                 # Check if number of tents is less than tips when is over
                 for j, tip_x in enumerate(self.tips_x):
                     if tip_x > len(np.where(self.field[:, j] == TENT)[0]):
@@ -228,15 +228,15 @@ class TentsGameSolver(object):
                         self.put_tent((None, None), know_what_tree=False, tent=(i, j))
 
     def heuristic(self):
-        while len(self.possible_tents) > 0 or self.is_wrong:
+        while len(self.possible_tents.heap) > 0 or self.is_wrong:
             if not self.is_wrong:
-                if self.possible_tents[0][0] >= NUM_POSSIBLE_TENTS_TO_PUT_EMPTY:
-                    possible_tent = self.possible_tents[0][1]
+                if self.possible_tents.heap[0][0] >= NUM_POSSIBLE_TENTS_TO_PUT_EMPTY:
+                    possible_tent = self.possible_tents.heap[0][1]
                     self.save_state(possible_tent, was_tent=False)
                     self.field[possible_tent[0], possible_tent[1]] = EMPTY
                     self.update_maximum_heap(possible_tent[0], possible_tent[1])
                 else:
-                    possible_tent = self.possible_tents[0][1]
+                    possible_tent = self.possible_tents.heap[0][1]
                     self.save_state(possible_tent, was_tent=True)
                     self.put_tent((None, None), know_what_tree=False, tent=possible_tent)
                 

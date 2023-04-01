@@ -43,7 +43,7 @@ class TentsGame(object):
                 except:
                     done = False
             (self.tips_x, self.tips_y) = self._get_tents_positions()
-            self.tips_x_copy, self.tips_y_copy = self.tips_x.copy(), self.tips_y.copy()
+            self.tips_x_copy, self.tips_y_copy = np.array(self.tips_x.copy()), np.array(self.tips_y.copy())
             done = False
             while not done:
                 try:
@@ -60,9 +60,9 @@ class TentsGame(object):
                 self.field[y, x] = TREE
 
             self.tips_x = tips_x
-            self.tips_x_copy = tips_x.copy()
+            self.tips_x_copy = np.array(tips_x.copy())
             self.tips_y = tips_y
-            self.tips_y_copy = tips_y.copy()
+            self.tips_y_copy = np.array(tips_y.copy())
             self.trees = []
             for i, j in zip(trees_y, trees_x):
                 self.trees.append((i, j))
@@ -138,12 +138,6 @@ class TentsGame(object):
         for tent in self.tents:
             self.field[tent[0], tent[1]] = EMPTY
         self.tents = []
-
-    def is_valid_coordinate(self, x, y):
-        if x >= 0 and y >= 0 and x < self.size and y < self.size:
-            return True
-        else:
-            return False
 
     def show(self):
         fileTEX = open('pic.tex', 'w', encoding='UTF-8')

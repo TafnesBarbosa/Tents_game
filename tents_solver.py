@@ -4,394 +4,317 @@ from math import inf
 counter = 0
 
 class TentsGameSolver(object):
-    def __init__(self, tents_game, state):
+    def __init__(self, tents_game):
         self.tents_game = tents_game
-        self.state = state
+        self.field = tents_game.field
+        self.size = tents_game.size
+        self.tips_x_copy = tents_game.tips_x_copy
+        self.tips_y_copy = tents_game.tips_y_copy
+        self.tips_x = tents_game.tips_x
+        self.tips_y = tents_game.tips_y
+        self.trees = tents_game.trees
         self.trees_possibilities = HeapMin([]) # heap to use in solving
         self.possible_tents = HeapMax([])
-        self.entrou_equal0 = False
-        self.entrou_equal1tent = False
-        self.entrou_equaltiptent = False
         self.acabou_pela_regra = False
-        self.queue = [] # To store the previous state of solving: field, tips_copy
-    
-    def change_state(self, new_state):
-        self.previous_state = self.state
-        self.state = new_state
+        self.verified_tips_equal_0 = False
+        self.verified_possible_tents_equal_1 = False
+        self.verified_tips_equal_possible_tents = False
+        self.is_wrong = False
+        self.state_queue = [] # To store the previous state of solving: field, tips_copy
 
-    def update(self):
-        self.state.execute(self)
+        self.start()
+        self.verifies_tips_equal_0()
+        self.verifies_possible_tents_equal_1()
+        while self.verified_possible_tents_equal_1:
+            self.verifies_tips_equal_0()
+            self.verifies_possible_tents_equal_1()
 
-class State(object):
-    def __init__(self, state_name):
-        """
-        Creates a state.
+        self.verifies_tips_equal_possible_tents()
+        self.verifies_tips_equal_0()
+        self.verifies_tips_equal_possible_tents()
+        while self.verified_tips_equal_possible_tents or self.verified_tips_equal_0:
+            self.verifies_tips_equal_0()
+            self.verifies_tips_equal_possible_tents()
+        # print('Finished initial state')
+        self.heuristic()
 
-        :param state_name: the name of the state.
-        :type state_name: str
-        """
-        self.state_name = state_name
+    def is_valid_coordinate(self, i, j):
+        if i >= 0 and i < self.size and j >= 0 and j < self.size:
+            return True
+        return False 
 
-    def __repr__(self):
-        return self.state_name
-
-    def execute(self, solver):
-        """
-        Executes the state logic.
-
-        :param tents_game: the tents_game where this state is being executed on.
-        """
-        raise NotImplementedError("This method is abstract and must be implemented in derived classes")
-
-    def update_minimum_heap(self, tents_game, trees_possibilities, i, j):
+    def update_minimum_heap(self, i, j):
         for ii, jj in FOUR_CONNECTED:
-            if tents_game.is_valid_coordinate(i+ii, j+jj) and tents_game.field[i+ii, j+jj] == TREE:
-                index = trees_possibilities.find((i+ii, j+jj))
+            coord_i = i + ii
+            coord_j = j + jj
+            if self.is_valid_coordinate(coord_i, coord_j) and self.field[coord_i, coord_j] == TREE:
+                index = self.trees_possibilities.find((coord_i, coord_j))
                 if index != None:
-                    trees_possibilities.modify(index, (trees_possibilities[index][0]-1, trees_possibilities[index][1]))
-    
-    def update_maximum_heap(self, tents_game, possible_tents, i, j):
-        index = possible_tents.find((i, j))
-        possible_tents.modify(index, (inf, possible_tents[index][1]))
-        possible_tents.extract_max()
-        for ii in range(-1,2):
-            for jj in range(-1,2):
-                if ii != 0 or jj != 0:
-                    if tents_game.is_valid_coordinate(i+ii, j+jj):
-                        if tents_game.field[i+ii, j+jj] == POSSIBLE_TENT:
-                            index = possible_tents.find((i+ii, j+jj))
-                            possible_tents.modify(index, (possible_tents[index][0]-1, possible_tents[index][1]))
-                        
+                    self.trees_possibilities.modify(index, (self.trees_possibilities[index][0]-1, self.trees_possibilities[index][1]))
 
-    def put_tent(self, tree, tents_game, trees_possibilities, possible_tents, know_what_tree = True, have_one_possibility = True, tent = (None, None)):
+    def update_maximum_heap(self, i, j):
+        index = self.possible_tents.find((i, j))
+        self.possible_tents.modify(index, (inf, self.possible_tents[index][1]))
+        self.possible_tents.extract_max()
+        for ii, jj in EIGHT_CONNECTED:
+            coord_i = i + ii
+            coord_j = j + jj
+            if self.is_valid_coordinate(coord_i, coord_j) and self.field[coord_i, coord_j] == POSSIBLE_TENT:
+                index = self.possible_tents.find((coord_i, coord_j))
+                self.possible_tents.modify(index, (self.possible_tents[index][0]-1, self.possible_tents[index][1]))
+
+    def put_tent(self, tree, know_what_tree=True, tent=(None, None)):
         if know_what_tree:
-            if have_one_possibility:
-                for i, j in FOUR_CONNECTED:
-                    if tents_game.is_valid_coordinate(tree[0]+i, tree[1]+j):
-                        if tents_game.field[tree[0]+i, tree[1]+j] == POSSIBLE_TENT:
-                            tents_game.field[tree[0]+i, tree[1]+j] = TENT
-                            self.update_8_connected((tree[0]+i, tree[1]+j), tents_game, trees_possibilities, possible_tents)
-                            tents_game.tips_x_copy[tree[1]+j] -= 1
-                            tents_game.tips_y_copy[tree[0]+i] -= 1
-            else:
-                tents_game.field[tent[0], tent[1]] = TENT
-                self.update_8_connected((tent[0], tent[1]), tents_game, trees_possibilities, possible_tents)
-                tents_game.tips_x_copy[tent[1]] -= 1
-                tents_game.tips_y_copy[tent[0]] -= 1
-
-        else:
-            if tree[0] != -1:
-                for j in range(tents_game.size):
-                    if tents_game.field[tree[0], j] == POSSIBLE_TENT:
-                        tents_game.field[tree[0], j] = TENT
-                        self.update_8_connected((tree[0], j), tents_game, trees_possibilities, possible_tents)
-                        tents_game.tips_y_copy[tree[0]] -= 1
-                        tents_game.tips_x_copy[j] -= 1
-            elif tree[1] != -1:
-                for i in range(tents_game.size):
-                    if tents_game.field[i, tree[1]] == POSSIBLE_TENT:
-                        tents_game.field[i, tree[1]] = TENT
-                        self.update_8_connected((i, tree[1]), tents_game, trees_possibilities, possible_tents)
-                        tents_game.tips_x_copy[tree[1]] -= 1
-                        tents_game.tips_y_copy[i] -= 1
-            else:
-                tents_game.field[tent[0], tent[1]] = TENT
-                self.update_8_connected(tent, tents_game, trees_possibilities, possible_tents)
-                tents_game.tips_x_copy[tent[1]] -= 1
-                tents_game.tips_y_copy[tent[0]] -= 1
-    
-    def update_8_connected(self, tent, tents_game, trees_possibilities, possible_tents):
-        self.update_maximum_heap(tents_game, possible_tents, tent[0], tent[1])
-        for i in range(-1,2):
-            for j in range(-1,2):
-                if tents_game.is_valid_coordinate(tent[0]+i, tent[1]+j) and tents_game.field[tent[0]+i, tent[1]+j] == POSSIBLE_TENT:
-                    tents_game.field[tent[0]+i, tent[1]+j] = EMPTY
-                    self.update_minimum_heap(tents_game, trees_possibilities, tent[0]+i, tent[1]+j)
-                    self.update_maximum_heap(tents_game, possible_tents, tent[0]+i, tent[1]+j)
-
-    def save_state_of_solving(self, solver, before=True, possible_tent=(None, None)):
-        if before:
-            solver.queue.append((
-                solver.tents_game.field.copy(),
-                solver.tents_game.tips_x_copy.copy(),
-                solver.tents_game.tips_y_copy.copy(),
-                HeapMin(solver.trees_possibilities.copy()),
-                HeapMax(solver.possible_tents.copy()),
-                solver.entrou_equal0,
-                solver.entrou_equal1tent,
-                solver.entrou_equaltiptent,
-                solver.acabou_pela_regra
-            ))
-        else:
-            state = solver.queue.pop()
-            solver.queue.append((
-                state[0],
-                state[1],
-                state[2],
-                state[3],
-                state[4],
-                state[5],
-                state[6],
-                state[7],
-                state[8],
-                possible_tent
-            ))
-
-    def return_to_last_state(self, solver):
-        if len(solver.queue[-1]) == 10:
-            (
-                solver.tents_game.field,
-                solver.tents_game.tips_x_copy,
-                solver.tents_game.tips_y_copy,
-                solver.trees_possibilities,
-                solver.possible_tents,
-                solver.entrou_equal0,
-                solver.entrou_equal1tent,
-                solver.entrou_equaltiptent,
-                solver.acabou_pela_regra,
-                possible_tent
-            ) = solver.queue.pop()
-            return possible_tent
-        else:
-            (
-                solver.tents_game.field,
-                solver.tents_game.tips_x_copy,
-                solver.tents_game.tips_y_copy,
-                solver.trees_possibilities,
-                solver.possible_tents,
-                solver.entrou_equal0,
-                solver.entrou_equal1tent,
-                solver.entrou_equaltiptent,
-                solver.acabou_pela_regra
-            ) = solver.queue.pop()
-            return None
-
-    def check_if_is_over(self, solver):
-        solver.acabou_pela_regra = True
-        for tip_x, tip_y in zip(solver.tents_game.tips_x_copy, solver.tents_game.tips_x_copy):
-            if tip_x != TIPS_ZEROED or tip_y != TIPS_ZEROED:
-                solver.acabou_pela_regra = False
-        if len(solver.trees_possibilities) == 0:
-            solver.acabou_pela_regra = True
-        if self.check_if_is_wrong(solver, solver.acabou_pela_regra):
-            solver.acabou_pela_regra = False
-            solver.change_state(ReturnPreviousState())
-            
-    def check_if_is_wrong(self, solver, is_over):
-        if not is_over: # If number of tents is greater of tips
-            for j, tip_x in enumerate(solver.tents_game.tips_x):
-                number_tents = 0
-                for i in range(solver.tents_game.size):
-                    if solver.tents_game.field[i, j] == TENT:
-                        number_tents += 1
-                if tip_x < number_tents:
-                    return True
-            
-            for i, tip_y in enumerate(solver.tents_game.tips_y):
-                number_tents = 0
-                for j in range(solver.tents_game.size):
-                    if solver.tents_game.field[i, j] == TENT:
-                        number_tents += 1
-                if tip_y < number_tents:
-                    return True
-        else: # if number of tips is different of number of tents
-            for j, tip_x in enumerate(solver.tents_game.tips_x):
-                number_tents = 0
-                for i in range(solver.tents_game.size):
-                    if solver.tents_game.field[i, j] == TENT:
-                        number_tents += 1
-                if tip_x != number_tents:
-                    return True
-            
-            for i, tip_y in enumerate(solver.tents_game.tips_y):
-                number_tents = 0
-                for j in range(solver.tents_game.size):
-                    if solver.tents_game.field[i, j] == TENT:
-                        number_tents += 1
-                if tip_y != number_tents:
-                    return True
-        return False
-
-class StartState(State):
-    """
-    State that creates minimum heap, set number of possibilities in the field.
-    """
-    def __init__(self):
-        super().__init__('Start')
-        
-    def execute(self, solver):
-        # Todo: add execution logic
-        possible_tents = []
-        for tree in solver.tents_game.trees:
-            number_possible_tents = 0
             for i, j in FOUR_CONNECTED:
-                if solver.tents_game.is_valid_coordinate(tree[0]+i, tree[1]+j):
-                    if solver.tents_game.field[tree[0]+i, tree[1]+j] == EMPTY or solver.tents_game.field[tree[0]+i, tree[1]+j] == POSSIBLE_TENT:
-                        if solver.tents_game.field[tree[0]+i, tree[1]+j] != POSSIBLE_TENT:
-                            possible_tents.append((tree[0]+i, tree[1]+j))
-                        solver.tents_game.field[tree[0]+i, tree[1]+j] = POSSIBLE_TENT
-                        number_possible_tents += 1
-                        
-            solver.trees_possibilities.insert((number_possible_tents, tree))
-        for possible_tent in possible_tents:
-            number_possible_tents = 0
-            for i in range(-1,2):
-                for j in range(-1,2):
-                    if i != 0 or j != 0:
-                        if solver.tents_game.is_valid_coordinate(possible_tent[0]+i, possible_tent[1]+j):
-                            if solver.tents_game.field[possible_tent[0]+i, possible_tent[1]+j] == POSSIBLE_TENT:
-                                number_possible_tents += 1
-            solver.possible_tents.insert((number_possible_tents, possible_tent))
+                coord_i = tree[0] + i
+                coord_j = tree[1] + j
+                if self.is_valid_coordinate(coord_i, coord_j):
+                    if self.field[coord_i, coord_j] == POSSIBLE_TENT:
+                        self.field[coord_i, coord_j] = TENT
+                        self.update_8_connected((coord_i, coord_j))
+                        self.tips_x_copy[coord_j] -= 1
+                        self.tips_y_copy[coord_i] -= 1
+        else:
+            if self.field[tent[0], tent[1]] == EMPTY:
+                self.is_wrong = True
+            else:
+                self.field[tent[0], tent[1]] = TENT
+                self.update_8_connected(tent)
+                self.tips_x_copy[tent[1]] -= 1
+                self.tips_y_copy[tent[0]] -= 1
 
-        solver.change_state(Equal0State())
-        self.check_if_is_over(solver)
+    def update_8_connected(self, tent):
+        self.update_maximum_heap(tent[0], tent[1])
+        for i, j in EIGHT_CONNECTED:
+            coord_i = tent[0] + i
+            coord_j = tent[1] + j
+            if self.is_valid_coordinate(coord_i, coord_j):
+                if self.field[coord_i, coord_j] == POSSIBLE_TENT:
+                    self.field[coord_i, coord_j] = EMPTY
+                    self.update_minimum_heap(coord_i, coord_j)
+                    self.update_maximum_heap(coord_i, coord_j)
 
-class Equal0State(State):
-    def __init__(self):
-        super().__init__('RowColumnEqual0')
+    def save_state(self, possible_tent, was_tent):
+        self.state_queue.append((
+            self.field.copy(),
+            self.tips_x_copy.copy(),
+            self.tips_y_copy.copy(),
+            HeapMax(self.possible_tents.copy()),
+            self.verified_tips_equal_0,
+            self.verified_possible_tents_equal_1,
+            self.verified_tips_equal_possible_tents,
+            self.is_wrong,
+            possible_tent,
+            was_tent
+        ))
 
-    def execute(self, solver):
-        solver.entrou_equal0 = False
-        for j, tip_x in enumerate(solver.tents_game.tips_x_copy):
-            if tip_x == 0:
-                solver.entrou_equal0 = True
-                solver.tents_game.tips_x_copy[j] = TIPS_ZEROED
-                for i in range(solver.tents_game.size):
-                    if solver.tents_game.field[i, j] == POSSIBLE_TENT:
-                        solver.tents_game.field[i, j] = EMPTY
-                        self.update_minimum_heap(solver.tents_game, solver.trees_possibilities, i, j)
-                        self.update_maximum_heap(solver.tents_game, solver.possible_tents, i, j)
+    def return_last_state(self):
+        (
+            self.tents_game.field,
+            self.tents_game.tips_x_copy,
+            self.tents_game.tips_y_copy,
+            self.possible_tents,
+            self.verified_tips_equal_0,
+            self.verified_possible_tents_equal_1,
+            self.verified_tips_equal_possible_tents,
+            self.is_wrong,
+            possible_tent,
+            was_tent
+        ) = self.state_queue.pop()
+        self.field = self.tents_game.field
+        self.tips_x_copy = self.tents_game.tips_x_copy
+        self.tips_y_copy = self.tents_game.tips_y_copy
+        return possible_tent, was_tent
 
-        for i, tip_y in enumerate(solver.tents_game.tips_y_copy):
-            if tip_y == 0:
-                solver.entrou_equal0 = True
-                solver.tents_game.tips_y_copy[i] = TIPS_ZEROED
-                for j in range(solver.tents_game.size):
-                    if solver.tents_game.field[i, j] == POSSIBLE_TENT:
-                        solver.tents_game.field[i, j] = EMPTY
-                        self.update_minimum_heap(solver.tents_game, solver.trees_possibilities, i, j)
-                        self.update_maximum_heap(solver.tents_game, solver.possible_tents, i, j)
-        solver.change_state(Equal1TentState())
-        self.check_if_is_over(solver)
-
-class Equal1TentState(State):
-    def __init__(self):
-        super().__init__('NumberTentsEqual1')
-
-    def execute(self, solver):
-        solver.entrou_equal1tent = False
-        while len(solver.trees_possibilities) > 0 and solver.trees_possibilities[0][0] == 1:
-            solver.entrou_equal1tent = True
-            tree = solver.trees_possibilities[0][1]
-            solver.trees_possibilities.extract_min()
-            self.put_tent(tree, solver.tents_game, solver.trees_possibilities, solver.possible_tents)
-            solver.change_state(Equal0State())
-        if not solver.entrou_equal1tent:
-            if solver.trees_possibilities[0][0] == 0:
-                tree = solver.trees_possibilities[0][1]
-                entrou = False
+    def check_is_wrong(self, finished=False):
+        if not self.is_wrong:
+            # Check if a tree has no tent
+            for tree in self.trees:
+                self.is_wrong = True
                 for i, j in FOUR_CONNECTED:
-                    if solver.tents_game.is_valid_coordinate(tree[0]+i, tree[1]+j):
-                        if solver.tents_game.field[tree[0]+i, tree[1]+j] == TENT:
-                            solver.trees_possibilities.extract_min()
-                            entrou = True
+                    coord_i = tree[0] + i
+                    coord_j = tree[1] + j
+                    if self.is_valid_coordinate(coord_i, coord_j):
+                        if self.field[coord_i, coord_j] == TENT or self.field[coord_i, coord_j] == POSSIBLE_TENT:
+                            self.is_wrong = False
                             break
-                if not entrou: # if number of possibilities is zero and there is no tent
-                    solver.change_state(ReturnPreviousState())
-
-                
-            solver.change_state(EqualTipTentsState())
-        self.check_if_is_over(solver)
-
-class EqualTipTentsState(State):
-    def __init__(self):
-        super().__init__('NumberTentsEqualTip')
-
-    def execute(self, solver):
-        solver.entrou_equaltiptent = False
-        for i in range(solver.tents_game.size):
-            number_possible_tents = 0
-            for j in range(solver.tents_game.size):
-                if solver.tents_game.field[i, j] == POSSIBLE_TENT:
-                    number_possible_tents += 1
-            if solver.tents_game.tips_y_copy[i] == number_possible_tents:
-                solver.entrou_equaltiptent = True
-                self.put_tent((i, -1), solver.tents_game, solver.trees_possibilities, solver.possible_tents, know_what_tree=False)
+                if self.is_wrong:
+                    break
+            if len(self.possible_tents) == 0:
+                # Check if number of tents is less than tips when is over
+                for j, tip_x in enumerate(self.tips_x):
+                    if tip_x > len(np.where(self.field[:, j] == TENT)[0]):
+                        self.is_wrong = True
+                        break
+                for i, tip_y in enumerate(self.tips_y):
+                    if tip_y > len(np.where(self.field[i, :] == TENT)[0]):
+                        self.is_wrong = True
+                        break
+            else:
+                # Check if number of tents is greater than tips while is not over
+                for j, tip_x in enumerate(self.tips_x):
+                    if tip_x < len(np.where(self.field[:, j] == TENT)[0]):
+                        self.is_wrong = True
+                        break
+                for i, tip_y in enumerate(self.tips_y):
+                    if tip_y < len(np.where(self.field[i, :] == TENT)[0]):
+                        self.is_wrong = True
+                        break
         
-        for j in range(solver.tents_game.size):
-            number_possible_tents = 0
-            for i in range(solver.tents_game.size):
-                if solver.tents_game.field[i, j] == POSSIBLE_TENT:
-                    number_possible_tents += 1
-            if solver.tents_game.tips_x_copy[j] == number_possible_tents:
-                solver.entrou_equaltiptent = True
-                self.put_tent((-1, j), solver.tents_game, solver.trees_possibilities, solver.possible_tents, know_what_tree=False)
-        solver.change_state(Equal0State())
-        if not solver.entrou_equal0 and not solver.entrou_equal1tent and not solver.entrou_equaltiptent:
-            self.check_if_is_over(solver)
-            if not solver.acabou_pela_regra:
-                solver.change_state(HeuristicState())
+    def start(self):
+        possible_tents = []
+        for tree in self.trees:
+            num_possible_tents = 0
+            for i, j in FOUR_CONNECTED:
+                coord_i = tree[0] + i
+                coord_j = tree[1] + j
+                if self.is_valid_coordinate(coord_i, coord_j):
+                    if self.field[coord_i, coord_j] == EMPTY or self.field[coord_i, coord_j] == POSSIBLE_TENT:
+                        if self.field[coord_i, coord_j] != POSSIBLE_TENT:
+                            possible_tents.append((coord_i, coord_j))
+                        self.field[coord_i, coord_j] = POSSIBLE_TENT
+                        num_possible_tents += 1
+            self.trees_possibilities.insert((num_possible_tents, tree))
+        for possible_tent in possible_tents:
+            num_possible_tents = 0
+            for i, j in EIGHT_CONNECTED:
+                coord_i = possible_tent[0] + i
+                coord_j = possible_tent[1] + j
+                if self.is_valid_coordinate(coord_i, coord_j):
+                    if self.field[coord_i, coord_j] == POSSIBLE_TENT:
+                        num_possible_tents += 1
+            self.possible_tents.insert((num_possible_tents, possible_tent))
 
-class HeuristicState(State):
-    def __init__(self):
-        super().__init__('HeuristicaState')
+    def verifies_tips_equal_0(self):
+        self.verified_tips_equal_0 = False
+        if not self.is_wrong:
+            for j in np.where(self.tips_x_copy == 0)[0]:
+                self.verified_tips_equal_0 = True
+                self.tips_x_copy[j] = TIPS_ZEROED
+                for i in np.where(self.field[:, j] == POSSIBLE_TENT)[0]:
+                    self.field[i, j] = EMPTY
+                    self.update_minimum_heap(i, j)
+                    self.update_maximum_heap(i, j)
+            for i in np.where(self.tips_y_copy == 0)[0]:
+                self.verified_tips_equal_0 = True
+                self.tips_y_copy[i] = TIPS_ZEROED
+                for j in np.where(self.field[i, :] == POSSIBLE_TENT)[0]:
+                    self.field[i, j] = EMPTY
+                    self.update_minimum_heap(i, j)
+                    self.update_maximum_heap(i, j)
 
-    def execute(self, solver):
-        before = True
-        self.save_state_of_solving(solver, before)
-        if len(solver.possible_tents) > 0 and solver.possible_tents[0][0] < 2:
-            tree = solver.trees_possibilities[0][1]
-            while len(solver.trees_possibilities) > 0 and solver.trees_possibilities[0][0] <= 0:
-                solver.trees_possibilities.extract_min()
-                if len(solver.trees_possibilities) > 0:
-                    tree = solver.trees_possibilities[0][1]
+    def verifies_possible_tents_equal_1(self):
+        self.verified_possible_tents_equal_1 = False
+        while len(self.trees_possibilities) > 0 and self.trees_possibilities[0][0] == 1:
+            self.verified_possible_tents_equal_1 = True
+            tree = self.trees_possibilities[0][1]
+            self.trees_possibilities.extract_min()
+            self.put_tent(tree)
+
+    def verifies_tips_equal_possible_tents(self):
+        self.verified_tips_equal_possible_tents = False
+        if not self.is_wrong:
+            for i in range(self.size):
+                aux = np.where(self.field[i, :] == POSSIBLE_TENT)[0]
+                if self.tips_y_copy[i] == len(aux):
+                    self.verified_tips_equal_possible_tents = True
+                    for j in aux:
+                        self.put_tent((None, None), know_what_tree=False, tent=(i, j))
+            for j in range(self.size):
+                aux = np.where(self.field[:, j] == POSSIBLE_TENT)[0]
+                if self.tips_x_copy[j] == len(aux):
+                    self.verified_tips_equal_possible_tents = True
+                    for i in aux:
+                        self.put_tent((None, None), know_what_tree=False, tent=(i, j))
+
+    def heuristic(self):
+        while len(self.possible_tents) > 0 or self.is_wrong:
+            if not self.is_wrong:
+                if self.possible_tents[0][0] >= NUM_POSSIBLE_TENTS_TO_PUT_EMPTY:
+                    possible_tent = self.possible_tents[0][1]
+                    self.save_state(possible_tent, was_tent=False)
+                    self.field[possible_tent[0], possible_tent[1]] = EMPTY
+                    self.update_maximum_heap(possible_tent[0], possible_tent[1])
                 else:
-                    self.check_if_is_over(solver)
-                    # solver.change_state(ReturnPreviousState())
-            else:
-                if len(solver.trees_possibilities) > 0:
-                    solver.trees_possibilities.extract_min()
-                    mini = inf
-                    minii = None
-                    minij = None
-                    for i, j in FOUR_CONNECTED:
-                        if solver.tents_game.is_valid_coordinate(tree[0]+i,tree[1]+j):
-                            if solver.tents_game.field[tree[0]+i,tree[1]+j] == POSSIBLE_TENT:
-                                if solver.tents_game.tips_x_copy[j] + solver.tents_game.tips_y_copy[i] < mini:
-                                    minii = i
-                                    minij = j
-                                    mini = solver.tents_game.tips_x_copy[j] + solver.tents_game.tips_y_copy[i]
-                    if minii != None:
-                        self.put_tent(tree, solver.tents_game, solver.trees_possibilities, solver.possible_tents, know_what_tree=True, have_one_possibility=False, tent=(tree[0]+minii,tree[1]+minij))
-                        self.save_state_of_solving(solver, False, possible_tent=(tree[0]+minii,tree[1]+minij))
-                    else:
-                        pass
-                        # print('i, j = None')
-        else:
-            if len(solver.possible_tents) > 0:
-                possible_tent = solver.possible_tents[0][1]
-                self.put_tent((-1,-1), solver.tents_game, solver.trees_possibilities, solver.possible_tents, know_what_tree=False, tent=possible_tent)
-                self.save_state_of_solving(solver, False, possible_tent=possible_tent)
-            else:
-                pass
+                    possible_tent = self.possible_tents[0][1]
+                    self.save_state(possible_tent, was_tent=True)
+                    self.put_tent((None, None), know_what_tree=False, tent=possible_tent)
                 
-        solver.change_state(Equal0State())
-        self.check_if_is_over(solver)
+                self.verifies_tips_equal_0()
+                self.verifies_tips_equal_possible_tents()
+                self.check_is_wrong()
+                while self.verified_tips_equal_0 or self.verified_tips_equal_possible_tents:
+                    self.verifies_tips_equal_0()
+                    self.verifies_tips_equal_possible_tents()
+                    self.check_is_wrong()
+                    if self.is_wrong:
+                        break
+            else:
+                possible_tent, was_tent = self.return_last_state()
+                if was_tent:
+                    self.field[possible_tent[0], possible_tent[1]] = EMPTY
+                    self.update_maximum_heap(possible_tent[0], possible_tent[1])
+                else:
+                    self.put_tent((None, None), know_what_tree=False, tent=possible_tent)
 
-class ReturnPreviousState(State):
-    def __init__(self):
-        super().__init__('ReturnPreviousState')
-
-    def execute(self, solver):
-        possible_tent = self.return_to_last_state(solver)
-        if possible_tent != None:
-            solver.tents_game.field[possible_tent[0], possible_tent[1]] = EMPTY
-            self.update_minimum_heap(solver.tents_game, solver.trees_possibilities, possible_tent[0], possible_tent[1])
-            self.update_maximum_heap(solver.tents_game, solver.possible_tents, possible_tent[0], possible_tent[1])
-            solver.change_state(Equal0State())
-            global counter 
-            counter += 1
-            if counter % 100 == 0:
-                print(counter)
+                self.verifies_tips_equal_0()
+                self.verifies_tips_equal_possible_tents()
+                self.check_is_wrong()
+                while self.verified_tips_equal_0 or self.verified_tips_equal_possible_tents:
+                    self.verifies_tips_equal_0()
+                    self.verifies_tips_equal_possible_tents()
+                    self.check_is_wrong()
+                    if self.is_wrong:
+                        break
         else:
-            solver.change_state(ReturnPreviousState())
+            # print('Finished heuristic')
+            pass
+
+        # while len(self.possible_tents) > 0:
+        #     while not self.is_wrong:
+        #         if len(self.possible_tents) == 0:
+        #             self.check_is_wrong(finished=True)
+        #             if self.is_wrong:
+        #                 possible_tent, was_tent = self.return_last_state()
+        #                 if was_tent:
+        #                     self.field[possible_tent[0], possible_tent[1]] = EMPTY
+        #                     self.update_maximum_heap(possible_tent[0], possible_tent[1])
+        #                 else:
+        #                     self.put_tent((None, None), know_what_tree=False, tent=possible_tent)
+        #                 break
+        #         if self.possible_tents[0][0] >= NUM_POSSIBLE_TENTS_TO_PUT_EMPTY:
+        #             possible_tent = self.possible_tents[0][1]
+        #             self.save_state(possible_tent, was_tent=False)
+        #             self.field[possible_tent[0], possible_tent[1]] = EMPTY
+        #             self.update_maximum_heap(possible_tent[0], possible_tent[1])
+        #         else:
+        #             possible_tent = self.possible_tents[0][1]
+        #             self.save_state(possible_tent, was_tent=True)
+        #             self.put_tent((None, None), know_what_tree=False, tent=possible_tent)
+
+        #         self.verifies_tips_equal_0()
+        #         self.verifies_tips_equal_possible_tents()
+        #         self.check_is_wrong()
+        #         while self.verified_tips_equal_0 or self.verified_tips_equal_possible_tents:
+        #             self.verifies_tips_equal_0()
+        #             self.verifies_tips_equal_possible_tents()
+        #             self.check_is_wrong()
+        #             if self.is_wrong:
+        #                 break
+        #     # Return to last state
+        #     else:
+        #         possible_tent, was_tent = self.return_last_state()
+        #         if was_tent:
+        #             self.field[possible_tent[0], possible_tent[1]] = EMPTY
+        #             self.update_maximum_heap(possible_tent[0], possible_tent[1])
+        #         else:
+        #             self.put_tent((None, None), know_what_tree=False, tent=possible_tent)
+        #         self.verifies_tips_equal_0()
+        #         self.verifies_tips_equal_possible_tents()
+        #         self.check_is_wrong()
+        #         while self.verified_tips_equal_0 or self.verified_tips_equal_possible_tents:
+        #             self.verifies_tips_equal_0()
+        #             self.verifies_tips_equal_possible_tents()
+        #             self.check_is_wrong()
+        # else:
+        #     print('Finished heuristic')

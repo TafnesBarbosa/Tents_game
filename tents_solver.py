@@ -15,7 +15,6 @@ class TentsGameSolver(object):
         self.trees = tents_game.trees
         self.trees_possibilities = HeapMin([]) # heap to use in solving
         self.possible_tents = HeapMax([])
-        self.acabou_pela_regra = False
         self.verified_tips_equal_0 = False
         self.verified_possible_tents_equal_1 = False
         self.verified_tips_equal_possible_tents = False
@@ -25,9 +24,10 @@ class TentsGameSolver(object):
         self.start()
         self.verifies_tips_equal_0()
         self.verifies_possible_tents_equal_1()
+        self.verifies_tips_equal_0()
         while self.verified_possible_tents_equal_1:
-            self.verifies_tips_equal_0()
             self.verifies_possible_tents_equal_1()
+            self.verifies_tips_equal_0()
 
         self.verifies_tips_equal_possible_tents()
         self.verifies_tips_equal_0()

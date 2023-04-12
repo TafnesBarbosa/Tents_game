@@ -8,7 +8,7 @@ TREE = 3
 EMPTY = 0
 TIPS_ZEROED = -1
 
-NUM_POSSIBLE_TENTS_TO_PUT_EMPTY = 4
+NUM_POSSIBLE_TENTS_TO_PUT_EMPTY = 5
 
-FOUR_CONNECTED = [(-1,0), (1,0), (0,-1), (0,1)]
+FOUR_CONNECTED = [(-1,0), (0,-1), (1,0), (0,1)]
 EIGHT_CONNECTED = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]

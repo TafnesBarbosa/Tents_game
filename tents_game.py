@@ -135,9 +135,10 @@ class TentsGame(object):
                         continue
     
     def _construct_remove_tents(self):
+        self.field_copy = self.field.copy()
         for tent in self.tents:
             self.field[tent[0], tent[1]] = EMPTY
-        self.tents = []
+        # self.tents = []
 
     def show(self):
         fileTEX = open('pic.tex', 'w', encoding='UTF-8')
